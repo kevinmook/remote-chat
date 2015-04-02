@@ -1,0 +1,23 @@
+{
+  "name": "chat",
+  "version": "0.0.1",
+  "description": "Connect the Music App to various chat services",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.12.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kevinmook/remote-chat.git"
+  },
+  "author": "Kevin Mook",
+  "license": "None",
+  "bugs": {
+    "url": "https://github.com/kevinmook/remote-chat/issues"
+  },
+  "homepage": "https://github.com/kevinmook/remote-chat"
+}
