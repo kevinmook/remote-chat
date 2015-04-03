@@ -99,8 +99,9 @@ module.exports = (robot) ->
       counter = 1
       for client in response['clients']
         hostname = client['hostname'] || "unknown"
-        client_message = "#{counter}: #{hostname}"
-        client_message += " (active)" if client['active']
+        connected_str = if client['connected'] then "connected" else "disconnected"
+        active_str = if client['active'] then ", selected" else ""
+        client_message = "#{counter}: #{hostname} (#{connected_str}#{active_str})"
         clients.push(client_message)
         counter += 1
       
