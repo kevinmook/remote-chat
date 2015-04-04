@@ -16,8 +16,7 @@ module.exports = (pg, clientEventHandler) ->
     clientMap[accountId][slackKey] = slack = new SlackClient(slackKey, autoReconnect, autoMark)
     
     slack.on 'open', ->
-      # anything?
-      # console.log slack.self
+      updateClientStatus(accountId, slackKey, true, "")
 
     slack.on 'message', (message) ->
       channel = slack.getChannelGroupOrDMByID(message.channel)
@@ -54,44 +53,70 @@ module.exports = (pg, clientEventHandler) ->
         """
 
     slack.on 'error', (error) ->
-      console.error "Error: #{error}"
+      if error == "account_inactive"
+        slack.autoReconnect = false
+        updateClientStatus(accountId, slackKey, false, error)
+      else if error == "invalid_auth"
+        slack.autoReconnect = false
+        updateClientStatus(accountId, slackKey, false, error)
+      else
+        console.error "Slack error: #{error}"
 
-    slack.login()
+    try
+      slack.login()
+    catch error
+      console.log error
 
   disconnectClient = (accountId, slackKey) =>
     if slack = clientMap[accountId]?[slackKey]
+      updateClientStatus(accountId, slackKey, false, "disabled")
       slack.disconnect()
       accountMap = clientMap[accountId]
       delete accountMap[slackKey]
       if Object.keys(accountMap).length == 0
         delete clientMap[accountId]
 
-  sqlQuery = (sql..., rowCallback) =>
+  sqlQuery = (sql, params, rowCallback) =>
+    if (typeof params) == "function"
+      rowCallback = params
+      params = null
+    
     pg.connect conString, (err, client, done) =>
       if(err)
         return console.error('error fetching client from pool', err)
-
-      client.query sql..., (err, result) =>
+      
+      client.query sql, params, (err, result) =>
         # call `done()` to release the client back to the pool
         done()
         
         if(err)
-          return console.error('error running query', err)
+          console.log('error running query', err) 
+          return
         
-        for index, row of result.rows
-          rowCallback(row)
-        client.end()
-    
+        if rowCallback?
+          for index, row of result.rows
+            rowCallback(row)
 
-  clientEventHandler.on 'connect', (chatId) =>
-    # console.log "Got connect for #{chatId}"
-    sqlQuery 'SELECT accounts.id AS account_id, chats.api_key AS slack_key, accounts.key AS music_key FROM chats INNER JOIN accounts ON chats.account_id = accounts.id WHERE service = \'slack\' AND chats.id = $1', chatId, (row) =>
+  updateClientStatus = (accountId, slackKey, active, statusCode) =>
+    sqlQuery 'UPDATE chats SET active = $1, status_code = $2 WHERE service = \'slack\' AND chats.account_id = $3 AND chats.api_key = $4', [active, statusCode, accountId, slackKey]
+
+  bindToClientEvents = =>
+    clientEventHandler.on 'connect', (params) =>
+      chatId = params[0]
+      # console.log "Got connect for #{chatId}"
+      sqlQuery 'SELECT accounts.id AS account_id, chats.api_key AS slack_key, accounts.key AS music_key FROM chats INNER JOIN accounts ON chats.account_id = accounts.id WHERE service = \'slack\' AND chats.id = $1', [chatId], (row) =>
+        connectToClient(row.account_id, row.slack_key, row.music_key)
+
+    clientEventHandler.on 'disconnect', (params) =>
+      chatId = params[0]
+      # console.log "Got disconnect for #{chatId}"
+      sqlQuery 'SELECT accounts.id AS account_id, chats.api_key AS slack_key FROM chats INNER JOIN accounts ON chats.account_id = accounts.id WHERE service = \'slack\' AND chats.id = $1', [chatId], (row) =>
+        disconnectClient(row.account_id, row.slack_key)
+
+  loadExistingClients = =>
+    sqlQuery 'SELECT accounts.id AS account_id, chats.api_key AS slack_key, accounts.key AS music_key FROM chats INNER JOIN accounts ON chats.account_id = accounts.id WHERE service = \'slack\' AND active = true', (row) =>
       connectToClient(row.account_id, row.slack_key, row.music_key)
 
-  clientEventHandler.on 'disconnect', (chatId) =>
-    # console.log "Got disconnect for #{chatId}"
-    sqlQuery 'SELECT accounts.id AS account_id, chats.api_key AS slack_key FROM chats INNER JOIN accounts ON chats.account_id = accounts.id WHERE service = \'slack\' AND chats.id = $1', chatId, (row) =>
-      disconnectClient(row.account_id, row.slack_key)
 
-  sqlQuery 'SELECT accounts.id AS account_id, chats.api_key AS slack_key, accounts.key AS music_key FROM chats INNER JOIN accounts ON chats.account_id = accounts.id WHERE service = \'slack\'', (row) =>
-    connectToClient(row.account_id, row.slack_key, row.music_key)
+  bindToClientEvents()
+  loadExistingClients()
