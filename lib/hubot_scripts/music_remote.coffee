@@ -49,11 +49,11 @@ module.exports = (robot) ->
     tellMusicRemote robot, msg, "resume", 'POST', {}, (response) ->
       msg.send "The music has been resumed."
   
-  robot.respond /\s*(?:skip|next)$/i, (msg) ->
+  robot.respond /\s*(?:skip|next)(?: song)?$/i, (msg) ->
     tellMusicRemote robot, msg, "next", 'POST', {}, (response) ->
       msg.send "The current song has been skipped."
   
-  robot.respond /\s*(?:previous|back)$/i, (msg) ->
+  robot.respond /\s*(?:previous|back)(?: song)?$/i, (msg) ->
     tellMusicRemote robot, msg, "previous", 'POST', {}, (response) ->
       msg.send "Going back to the previous song."
   
