@@ -34,56 +34,58 @@
 
 module.exports = (robot) ->
 
-  robot.respond /\s*play (.*)$/i, (msg) ->
+  robot.respond /^\s*play <?(.*?)>?$/i, (msg) ->
+    # note: slack surrounds spotify uris with <>
+    
     tellMusicRemote robot, msg, 'play', 'POST', {uri: msg.match[1]}, (response) ->
       status = response['status']
       track = status['track']
       artist = status['artist']
       msg.send "Now playing '#{track}' by '#{artist}.'"
   
-  robot.respond /\s*(?:pause|stop)$/i, (msg) ->
+  robot.respond /^\s*(?:pause|stop)(?: the)?(?: music)?$/i, (msg) ->
     tellMusicRemote robot, msg, "pause", 'POST', {}, (response) ->
       msg.send "The music has been paused."
   
-  robot.respond /\s*(?:unpause|resume|play)$/i, (msg) ->
+  robot.respond /^\s*(?:unpause|resume|play)(?: the)?(?: music)?$/i, (msg) ->
     tellMusicRemote robot, msg, "resume", 'POST', {}, (response) ->
       msg.send "The music has been resumed."
   
-  robot.respond /\s*(?:skip|next)(?: song)?$/i, (msg) ->
+  robot.respond /^\s*(?:skip|next)(?: song)?$/i, (msg) ->
     tellMusicRemote robot, msg, "next", 'POST', {}, (response) ->
       msg.send "The current song has been skipped."
   
-  robot.respond /\s*(?:previous|back)(?: song)?$/i, (msg) ->
+  robot.respond /^\s*(?:previous|back)(?: song)?$/i, (msg) ->
     tellMusicRemote robot, msg, "previous", 'POST', {}, (response) ->
       msg.send "Going back to the previous song."
   
-  robot.respond /\s*shuffle$/i, (msg) ->
+  robot.respond /^\s*shuffle(?: the)?(?: music)?$/i, (msg) ->
     tellMusicRemote robot, msg, "shuffle", 'POST', {shuffle: true}, (response) ->
       msg.send "The playlist will now be shuffled."
   
-  robot.respond /\s*don.?t shuffle$/i, (msg) ->
+  robot.respond /^\s*(?:don.?t|stop) (?:shuffle|shuffling)(?: the)?(?: music)?$/i, (msg) ->
     tellMusicRemote robot, msg, "shuffle", 'POST', {shuffle: false}, (response) ->
       msg.send "The playlist will not be shuffled."
   
-  robot.respond /\s*(?:loop|repeat)$/i, (msg) ->
+  robot.respond /^\s*(?:loop|repeat)(?: the)?(?: music)?$/i, (msg) ->
     tellMusicRemote robot, msg, "repeat", 'POST', {repeat: true}, (response) ->
       msg.send "The playlist will now be looped."
   
-  robot.respond /\s*don.?t (?:loop|repeat)$/i, (msg) ->
+  robot.respond /^\s*(?:don.?t|stop) (?:loop|repeat|looping|repeating)(?: the)?(?: music)?$/i, (msg) ->
     tellMusicRemote robot, msg, "repeat", 'POST', {repeat: false}, (response) ->
       msg.send "The playlist will not be looped."
   
-  robot.respond /\s*set (?:the )?volume (?:to )?([0-9]+)$/i, (msg) ->
+  robot.respond /^\s*set (?:the )?volume (?:to )?([0-9]+)$/i, (msg) ->
     tellMusicRemote robot, msg, "volume", 'POST', {volume: msg.match[1]}, (response) ->
       volume = response['status']['volume']
       msg.send "The volume has been set to #{volume}."
   
-  robot.respond /\s*what.?s (?:the )?volume\??$/i, (msg) ->
+  robot.respond /^\s*what.?s (?:the )?volume\??$/i, (msg) ->
     tellMusicRemote robot, msg, "status", 'GET', {}, (response) ->
       volume = response['status']['volume']
       msg.send "The volume is at #{volume}."
   
-  robot.respond /\s*what.?s playing\??$/i, (msg) ->
+  robot.respond /^\s*what.?s playing\??$/i, (msg) ->
     tellMusicRemote robot, msg, "status", 'GET', {}, (response) ->
       status = response['status']
       track = status['track']
@@ -92,7 +94,7 @@ module.exports = (robot) ->
       url = uri.replace(/:/g, "/").replace("spotify/", "http://open.spotify.com/")
       msg.send "#{url}"
   
-  robot.respond /\s*list clients$/i, (msg) ->
+  robot.respond /^\s*list clients$/i, (msg) ->
     tellMusicRemote robot, msg, "clients", 'GET', {}, (response) ->
       clients = []
       
@@ -112,7 +114,7 @@ module.exports = (robot) ->
       else
         msg.send "No known clients"
   
-  robot.respond /\s*select client ([0-9]+)$/i, (msg) ->
+  robot.respond /^\s*select client ([0-9]+)$/i, (msg) ->
     tellMusicRemote robot, msg, "clients", 'GET', {}, (response) ->
       client_id = msg.match[1] - 1
       selected_client = response['clients'][client_id]
@@ -142,7 +144,8 @@ tellMusicRemote = (robot, msg, command, method, params, callback) ->
   if params_array.length > 0
     params_array_str = params_array.join("&")
   
-  url = "https://music-remote.herokuapp.com/api/v1/#{musicKey}/#{command}"
+  urlBase = process.env.API_ROOT || "https://music-remote.herokuapp.com"
+  url = "#{urlBase}/api/v1/#{musicKey}/#{command}"
   remote_call = null
   switch method
     when 'GET'
