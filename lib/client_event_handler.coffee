@@ -9,7 +9,7 @@ handler_fire = (event, args...) ->
   if callbacks = events[event]
     for callback in callbacks
       try
-        callback(args)
+        callback(args...)
       catch error
         console.log("Error in callback for '#{event}': '#{error}'")
 

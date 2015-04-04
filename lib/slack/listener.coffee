@@ -101,14 +101,12 @@ module.exports = (pg, clientEventHandler) ->
     sqlQuery 'UPDATE chats SET active = $1, status_code = $2 WHERE service = \'slack\' AND chats.account_id = $3 AND chats.api_key = $4', [active, statusCode, accountId, slackKey]
 
   bindToClientEvents = =>
-    clientEventHandler.on 'connect', (params) =>
-      chatId = params[0]
+    clientEventHandler.on 'connect', (chatId) =>
       # console.log "Got connect for #{chatId}"
       sqlQuery 'SELECT accounts.id AS account_id, chats.api_key AS slack_key, accounts.key AS music_key FROM chats INNER JOIN accounts ON chats.account_id = accounts.id WHERE service = \'slack\' AND chats.id = $1', [chatId], (row) =>
         connectToClient(row.account_id, row.slack_key, row.music_key)
 
-    clientEventHandler.on 'disconnect', (params) =>
-      chatId = params[0]
+    clientEventHandler.on 'disconnect', (chatId) =>
       # console.log "Got disconnect for #{chatId}"
       sqlQuery 'SELECT accounts.id AS account_id, chats.api_key AS slack_key FROM chats INNER JOIN accounts ON chats.account_id = accounts.id WHERE service = \'slack\' AND chats.id = $1', [chatId], (row) =>
         disconnectClient(row.account_id, row.slack_key)
