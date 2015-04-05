@@ -1,16 +1,18 @@
 mockHubot = require('./mock_hubot/robot')
 
 require('./hubot_scripts/music_remote')(mockHubot)
+require('./hubot_scripts/help')(mockHubot)
 
 messageRegex = /^([^ :,]+)(?:[:,\s]+)(.*)?/
 
-module.exports.handleMessage = (botName, channel, text, musicKey, directMessage) ->
+module.exports.handleMessage = (botNames, channel, text, musicKey, directMessage) ->
   if directMessage
-    actOnMessage(channel, text, musicKey)
+    actOnMessage(botNames, channel, text, musicKey)
   else if match = text.match(messageRegex)
-    if botName.toLowerCase() == match[1].toLowerCase()
+    lowerNameMatch = match[1].toLowerCase()
+    if(botNames.some (botName) -> botName.toLowerCase() == lowerNameMatch)
       messageText = match[2]
-      actOnMessage(channel, messageText, musicKey)
+      actOnMessage(botNames, channel, messageText, musicKey)
 
-actOnMessage = (channel, text, musicKey) ->
-  mockHubot.messageReceived(channel, text, musicKey)
+actOnMessage = (botNames, channel, text, musicKey) ->
+  mockHubot.messageReceived(botNames, channel, text, musicKey)

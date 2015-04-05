@@ -36,7 +36,7 @@ module.exports = (pg, clientEventHandler) ->
       if type is 'message' and text? and channel?
         directMessage = channel? && !channel.is_channel
         # note: slack.self.id is something like "U047M2UGZ". slack.self.name is the bot's actual name
-        responder.handleMessage("<@#{slack.self.id}>", channel, text, musicKey, directMessage)
+        responder.handleMessage(["@#{slack.self.name}", "<@#{slack.self.id}>"], channel, text, musicKey, directMessage)
       else
         #this one should probably be impossible, since we're in slack.on 'message' 
         typeError = if type isnt 'message' then "unexpected type #{type}." else null

@@ -6,18 +6,19 @@ module.exports = {
   respond: (regex, callback) ->
     actions.push [regex, callback]
   
-  messageReceived: (channel, text, musicKey) ->
+  messageReceived: (botNames, channel, text, musicKey) ->
     for action in actions
       regex = action[0]
       callback = action[1]
       
       if match = text.match(regex)
-        callback(mockHubotMessage(channel, match, musicKey))
+        callback(mockHubotMessage(botNames, channel, match, musicKey))
         return
 }
 
-mockHubotMessage = (channel, match, musicKey) ->
+mockHubotMessage = (botNames, channel, match, musicKey) ->
   {
+    botName: botNames[0]
     match: match
     musicApiKey: musicKey
     http: (url, options) ->
